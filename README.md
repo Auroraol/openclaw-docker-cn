@@ -142,7 +142,7 @@ docker build -t openclaw:local .
 # 复制环境变量模板
 cp .env.example .env
 
-# 编辑配置文件（至少配置LLM模型相关参数）
+# 编辑配置文件（至少配置LLM相关参数）
 nano .env
 ```
 
@@ -436,6 +436,8 @@ docker compose up -d
 3. 在凭证页面获取 **App ID** 和 **App Secret**
 4. 开启所需权限（见下方）⚠️ **重要**
 5. 配置事件订阅（见下方）⚠️ **重要**
+
+![image-20260315023152066](README.assets/image-20260315023152066.png)
 
 #### 2. 必需权限（租户级别）
 
