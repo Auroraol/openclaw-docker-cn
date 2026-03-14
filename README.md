@@ -80,7 +80,9 @@ docker compose up -d --force-recreate
 
 > 💡 **说明**：如果你是通过单独下载 [`docker-compose.yml`](docker-compose.yml) 和 [`.env.example`](.env.example) 的方式部署，升级时也建议优先同步这两个文件，再执行 [`docker compose pull`](README.md:117) 与 [`docker compose up -d --force-recreate`](README.md:118)。
 
-#### ![image-20260314175037619](README.assets/image-20260314175037619.png)6. 停止服务
+![image-20260314175037619](README.assets/image-20260314175037619.png)
+
+####  6. 停止服务
 
 ```bash
 docker-compose down
@@ -124,14 +126,14 @@ npx -y @larksuite/openclaw-lark-tools install
 #### 1. 克隆项目
 
 ```bash
-git clone https://github.com/justlovemaki/OpenClaw-Docker-CN-IM.git
-cd OpenClaw-Docker-CN-IM
+git clone git@github.com:Auroraol/openclaw-docker-cn.git
+cd openclaw-docker-cn
 ```
 
-#### 2. 构建镜像
+#### 2. 本地构建镜像
 
 ```bash
-docker build -t justlikemaki/openclaw-docker-cn-im:latest .
+docker build -t openclaw:local .
 ```
 
 #### 3. 配置环境变量
@@ -140,7 +142,7 @@ docker build -t justlikemaki/openclaw-docker-cn-im:latest .
 # 复制环境变量模板
 cp .env.example .env
 
-# 编辑配置文件（至少配置 AI 模型相关参数）
+# 编辑配置文件（至少配置LLM模型相关参数）
 nano .env
 ```
 
