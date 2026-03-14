@@ -192,7 +192,7 @@ docker-compose up -d
 
 ### 飞书机器人
 
-![image-20260314203514523](README.assets/image-20260314203514523.png)
+<img src="README.assets/image-20260315030632171.png" style="zoom:150%;" />
 
 ### qq机器人
 
@@ -273,7 +273,7 @@ MODEL2_MAX_TOKENS=8192
 
 [模型大全功能规格与计费:](https://help.aliyun.com/zh/model-studio/models#03a05ab98953u)
 
-![image-20260314203042659](README.assets/image-20260314203042659.png)
+<img src="README.assets/image-20260314203042659.png" alt="image-20260314203042659" style="zoom:150%;" />
 
 注意：[`PRIMARY_MODEL`](.env.example) 和 [`IMAGE_MODEL_ID`](.env.example) 都可以填写完整引用，即 `provider/model` 格式，例如：
 
@@ -353,6 +353,55 @@ WORKSPACE 是 AI 机器人可以安全访问和修改文件的专用目录，类
 | `WORKSPACE` | 工作空间目录 | `/home/node/.openclaw/workspace` |
 
 ---
+
+##  skills使用
+
+```bash
+docker exec -it openclaw-gateway /bin/bash
+查看已安装技能
+openclaw skills list
+```
+
+![image-20260314210122982](README.assets/image-20260314210122982.png)
+
+### 安装技能
+
+```bash
+# 登录
+npx clawhub login
+# 搜索技能
+npx clawhub search capability-evolver
+# 直接安装
+npx clawhub install capability-evolver
+# 批量安装多个
+npx clawhub install capability-evolver self-improving-agent tavily-search summarize github
+```
+
+### 示例
+
+登录clawhub
+
+```bash
+node@e217d58ae6b0:~$ npx clawhub whoami
+Error: Not logged in. Run: clawhub login
+node@e217d58ae6b0:~$ npx clawhub login
+Opening browser: https://clawhub.ai/cli/auth?redirect_uri=http%3A%2F%2F127.0.0.1%3A41313%2Fcallback&label_b64=Q0xJIHRva2Vu&state=41f9a3521677f583f6977baf6d83bca5
+^C
+node@e217d58ae6b0:~$ npx clawhub login --token clh_1mov9RWOiT5QyRrX4B0QkZ8tjILD5EforBAftWIiOJ0
+✔ OK. Logged in as @Auroraol.
+```
+
+![image-20260314212455251](README.assets/image-20260314212455251.png)
+
+![image-20260314212552050](README.assets/image-20260314212552050.png)
+
+使用clawhub安装
+
+```
+node@e217d58ae6b0:~$ npx clawhub install agent-browser
+```
+
+<img src="README.assets/image-20260314213032665.png" alt="image-20260314213032665" style="zoom:150%;" />
 
 ## 常见问题
 
@@ -1375,56 +1424,7 @@ cat ~/.openclaw/openclaw.json
 docker exec -it openclaw-gateway /bin/bash
 ```
 
-![image-20260314190300307](README.assets/image-20260314190300307.png)
-
-###  skills使用
-
-```bash
-docker exec -it openclaw-gateway /bin/bash
-查看已安装技能
-openclaw skills list
-```
-
-![image-20260314210122982](README.assets/image-20260314210122982.png)
-
-#### 安装技能
-
-```bash
-# 登录
-npx clawhub login
-# 搜索技能
-npx clawhub search capability-evolver
-# 直接安装
-npx clawhub install capability-evolver
-# 批量安装多个
-npx clawhub install capability-evolver self-improving-agent tavily-search summarize github
-```
-
-#### 示例
-
-登录clawhub
-
-```bash
-node@e217d58ae6b0:~$ npx clawhub whoami
-Error: Not logged in. Run: clawhub login
-node@e217d58ae6b0:~$ npx clawhub login
-Opening browser: https://clawhub.ai/cli/auth?redirect_uri=http%3A%2F%2F127.0.0.1%3A41313%2Fcallback&label_b64=Q0xJIHRva2Vu&state=41f9a3521677f583f6977baf6d83bca5
-^C
-node@e217d58ae6b0:~$ npx clawhub login --token clh_1mov9RWOiT5QyRrX4B0QkZ8tjILD5EforBAftWIiOJ0
-✔ OK. Logged in as @Auroraol.
-```
-
-![image-20260314212455251](README.assets/image-20260314212455251.png)
-
-![image-20260314212552050](README.assets/image-20260314212552050.png)
-
-使用clawhub安装
-
-```
-node@e217d58ae6b0:~$ npx clawhub install agent-browser
-```
-
-![image-20260314213032665](README.assets/image-20260314213032665.png)
+<img src="README.assets/image-20260314190300307.png" alt="image-20260314190300307" style="zoom:200%;" />
 
 ### 查看运行日志
 
