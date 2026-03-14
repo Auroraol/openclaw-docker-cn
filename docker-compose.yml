@@ -1,11 +1,9 @@
 version: '3.8'
-
+#使用锚点变量定义, 避免重复代码
 x-openclaw-common-env: &openclaw-common-env
   TZ: Asia/Shanghai
   HOME: /home/node
   TERM: xterm-256color
-  # 配置同步开关
-  SYNC_OPENCLAW_CONFIG: ${SYNC_OPENCLAW_CONFIG}
   # 模型配置
   SYNC_MODEL_CONFIG: ${SYNC_MODEL_CONFIG}
   MODEL_ID: ${MODEL_ID}
@@ -95,18 +93,6 @@ x-openclaw-common-env: &openclaw-common-env
   DINGTALK_ALLOW_FROM: ${DINGTALK_ALLOW_FROM}
   DINGTALK_CORP_ID: ${DINGTALK_CORP_ID}
   DINGTALK_AGENT_ID: ${DINGTALK_AGENT_ID}
-  DINGTALK_MESSAGE_TYPE: ${DINGTALK_MESSAGE_TYPE}
-  DINGTALK_CARD_TEMPLATE_ID: ${DINGTALK_CARD_TEMPLATE_ID}
-  DINGTALK_CARD_TEMPLATE_KEY: ${DINGTALK_CARD_TEMPLATE_KEY}
-  DINGTALK_MAX_RECONNECT_CYCLES: ${DINGTALK_MAX_RECONNECT_CYCLES}
-  DINGTALK_DEBUG: ${DINGTALK_DEBUG}
-  DINGTALK_JOURNAL_TTL_DAYS: ${DINGTALK_JOURNAL_TTL_DAYS}
-  DINGTALK_SHOW_THINKING: ${DINGTALK_SHOW_THINKING}
-  DINGTALK_THINKING_MESSAGE: ${DINGTALK_THINKING_MESSAGE}
-  DINGTALK_ASYNC_MODE: ${DINGTALK_ASYNC_MODE}
-  DINGTALK_ASYNC_ACK_TEXT: ${DINGTALK_ASYNC_ACK_TEXT}
-  # 钉钉多机器人 JSON
-  DINGTALK_ACCOUNTS_JSON: ${DINGTALK_ACCOUNTS_JSON}
   # QQ 机器人配置
   QQBOT_APP_ID: ${QQBOT_APP_ID}
   QQBOT_CLIENT_SECRET: ${QQBOT_CLIENT_SECRET}
@@ -181,28 +167,32 @@ services:
     # 可选：指定容器运行 UID:GID（例如 1000:1000）
     # 默认保持 root 启动，以便 init.sh 自动修复挂载卷权限后再降权运行网关
     user: ${OPENCLAW_RUN_USER:-0:0}
-    environment: *openclaw-common-env
+    environment: *openclaw-common-env  # 引用配置
     volumes:
       - ${OPENCLAW_DATA_DIR}:/home/node/.openclaw
       # 使用命名卷共享 extensions，确保工具容器安装后的插件主容器可见
-      - openclaw-extensions:/home/node/.openclaw/extensions
+      - openclaw-extensions:/home/node/.openclaw/extensions #两个容器挂载了同一个命名卷 openclaw-extensions
     ports:
       - "${OPENCLAW_GATEWAY_PORT}:18789"
       - "${OPENCLAW_BRIDGE_PORT}:18790"
     init: true
     restart: unless-stopped
 
+  # 辅助容器，专门用于安装和管理 OpenClaw 插件
+  # docker-compose --profile tools up -d openclaw-installer
+  # docker exec -it openclaw-installer bash
   openclaw-installer:
     container_name: openclaw-installer
     image: ${OPENCLAW_IMAGE}
     profiles:
       - tools
+      # 服务默认不启动，只有在需要时才手动激活
     user: ${OPENCLAW_RUN_USER:-0:0}
     environment: *openclaw-common-env
     volumes:
       - ${OPENCLAW_DATA_DIR}:/home/node/.openclaw
-      - openclaw-extensions:/home/node/.openclaw/extensions
-    entrypoint: ["tail", "-f", "/dev/null"]
+      - openclaw-extensions:/home/node/.openclaw/extensions  #两个容器挂载了同一个命名卷 openclaw-extensions,  所以installer 安装的插件 gateway 能用
+    entrypoint: ["tail", "-f", "/dev/null"] #完全禁用镜像默认的 init.sh 脚本
     init: true
     restart: 'no'
     ports: []

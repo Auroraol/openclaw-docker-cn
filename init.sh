@@ -1,42 +1,81 @@
 #!/bin/bash
+# =============================================================================
+# OpenClaw Docker 容器初始化脚本
+# =============================================================================
+# 功能说明：
+# 1. 检查和修复挂载目录权限
+# 2. 创建基础配置文件
+# 3. 根据环境变量同步配置（AI 模型、IM 渠道、插件等）
+# 4. 启动 OpenClaw Gateway 服务
+# 
+# 运行用户：root（自动降权为 node 用户运行网关）
+# =============================================================================
 
-set -e
+set -e  # 遇到错误立即退出
 
-OPENCLAW_HOME="/home/node/.openclaw"
-OPENCLAW_WORKSPACE="${WORKSPACE:-/home/node/.openclaw/workspace}"
-NODE_UID="$(id -u node)"
-NODE_GID="$(id -g node)"
-GATEWAY_PID=""
+# -----------------------------------------------------------------------------
+# 全局变量定义
+# -----------------------------------------------------------------------------
+OPENCLAW_HOME="/home/node/.openclaw"  # OpenClaw 主目录（配置和数据存储）
+OPENCLAW_WORKSPACE="${WORKSPACE:-/home/node/.openclaw/workspace}"  # 工作空间目录（可通过 WORKSPACE 环境变量覆盖）
+NODE_UID="$(id -u node)"  # node 用户的 UID
+NODE_GID="$(id -g node)"  # node 用户的 GID
+GATEWAY_PID=""  # 用于存储 Gateway 进程 ID
 
+# -----------------------------------------------------------------------------
+# 日志输出函数：打印带分隔符的标题
+# 参数：$1 - 标题内容
+# -----------------------------------------------------------------------------
 log_section() {
     echo "=== $1 ==="
 }
 
+# -----------------------------------------------------------------------------
+# 目录创建函数：确保必要的目录存在
+# 创建 OpenClaw 主目录和工作空间目录
+# -----------------------------------------------------------------------------
 ensure_directories() {
     mkdir -p "$OPENCLAW_HOME" "$OPENCLAW_WORKSPACE"
 }
 
+# -----------------------------------------------------------------------------
+# 权限检查函数：判断当前是否以 root 用户运行
+# 返回值：0 - 是 root；1 - 不是 root
+# -----------------------------------------------------------------------------
 is_root() {
     [ "$(id -u)" -eq 0 ]
 }
 
+# -----------------------------------------------------------------------------
+# 权限修复函数：检测并修复挂载目录的所有者权限
+# 使用场景：当宿主机挂载目录的所有者与容器内 node 用户不一致时
+# 修复步骤：
+#   1. 检测当前目录所有者
+#   2. 尝试自动修改为 node 用户所有
+#   3. 验证写入权限
+#   4. 如果失败，提供详细的解决建议
+# -----------------------------------------------------------------------------
 fix_permissions_if_needed() {
+    # 非 root 用户运行时跳过修复
     if ! is_root; then
         return
     fi
 
     local current_owner
+    # 获取挂载目录当前的所有者 (UID:GID)
     current_owner="$(stat -c '%u:%g' "$OPENCLAW_HOME" 2>/dev/null || echo unknown:unknown)"
 
-    echo "挂载目录: $OPENCLAW_HOME"
-    echo "当前所有者(UID:GID): $current_owner"
-    echo "目标所有者(UID:GID): ${NODE_UID}:${NODE_GID}"
+    echo "挂载目录：$OPENCLAW_HOME"
+    echo "当前所有者 (UID:GID): $current_owner"
+    echo "目标所有者 (UID:GID): ${NODE_UID}:${NODE_GID}"
 
+    # 如果所有者不一致，尝试修复
     if [ "$current_owner" != "${NODE_UID}:${NODE_GID}" ]; then
         echo "检测到宿主机挂载目录所有者与容器运行用户不一致，尝试自动修复..."
         chown -R node:node "$OPENCLAW_HOME" || true
     fi
 
+    # 验证 node 用户是否有写入权限
     if ! gosu node test -w "$OPENCLAW_HOME"; then
         echo "❌ 权限检查失败：node 用户无法写入 $OPENCLAW_HOME"
         echo "请在宿主机执行（Linux）："
@@ -48,9 +87,14 @@ fix_permissions_if_needed() {
     fi
 }
 
+# -----------------------------------------------------------------------------
+# 基础配置创建函数：当 openclaw.json 不存在时创建默认配置
+# 包含：浏览器设置、模型配置、Agent 默认值、工具配置、内存后端等
+# -----------------------------------------------------------------------------
 ensure_base_config() {
     local config_file="$OPENCLAW_HOME/openclaw.json"
 
+    # 如果配置文件已存在，直接返回
     if [ -f "$config_file" ]; then
         return
     fi
@@ -58,60 +102,42 @@ ensure_base_config() {
     echo "配置文件不存在，创建基础骨架..."
     cat > "$config_file" <<'EOF'
 {
-  "meta": { "lastTouchedVersion": "2026.2.14" },
-  "update": { "checkOnStart": false },
-  "browser": {
-    "headless": true,
-    "noSandbox": true,
-    "defaultProfile": "openclaw",
-    "executablePath": "/usr/bin/chromium"
+  "meta": { "lastTouchedVersion": "2026.2.14" },  # 元数据：最后修改版本
+  "update": { "checkOnStart": false },  # 启动时不自动检查更新
+  "browser": {  # 浏览器配置（用于网页自动化）
+    "headless": true,  # 无头模式
+    "noSandbox": true,  # 禁用沙盒（容器环境需要）
+    "defaultProfile": "openclaw",  # 默认浏览器配置文件
+    "executablePath": "/usr/bin/chromium"  # Chromium 路径
   },
-  "models": { "mode": "merge", "providers": { "default": { "models": [] } } },
-  "agents": {
+  "models": { "mode": "merge", "providers": { "default": { "models": [] } } },  # 模型提供商配置
+  "agents": {  # Agent 默认配置
     "defaults": {
-      "compaction": { "mode": "safeguard" },
-      "sandbox": { "mode": "off" },
-      "elevatedDefault": "full",
-      "maxConcurrent": 4,
-      "subagents": { "maxConcurrent": 8 }
+      "compaction": { "mode": "safeguard" },  # 对话压缩模式
+      "sandbox": { "mode": "off" },  # 沙盒模式（关闭）
+      "elevatedDefault": "full",  # 默认提权级别
+      "maxConcurrent": 4,  # 最大并发 Agent 数
+      "subagents": { "maxConcurrent": 8 }  # 子代理最大并发
     }
   },
-  "messages": { "ackReactionScope": "group-mentions", "tts": { "edge": { "voice": "zh-CN-XiaoxiaoNeural" } } },
-  "commands": { "native": "auto", "nativeSkills": "auto" },
-  "tools": {
-    "profile": "full",
-    "sessions": {
-      "visibility": "all"
-    },
-    "fs": {
-      "workspaceOnly": true
-    }
+  "messages": { "ackReactionScope": "group-mentions", "tts": { "edge": { "voice": "zh-CN-XiaoxiaoNeural" } } },  # 消息和 TTS 配置
+  "commands": { "native": "auto", "nativeSkills": "auto" },  # 原生命令和技能
+  "tools": {  # 工具配置
+    "profile": "full",  # 完整工具集
+    "sessions": { "visibility": "all" },  # 会话可见性
+    "fs": { "workspaceOnly": true }  # 文件系统访问限制在工作空间
   },
-  "channels": {},
-  "plugins": { "entries": {}, "installs": {} },
-  "memory": {
-    "backend": "qmd",
-    "citations": "auto",
+  "channels": {},  # IM 渠道配置（将由 sync_config_with_env 填充）
+  "plugins": { "entries": {}, "installs": {} },  # 插件配置
+  "memory": {  # 记忆后端配置
+    "backend": "qmd",  # 使用 QMD 作为记忆后端
     "qmd": {
-      "includeDefaultMemory": true,
-      "sessions": {
-        "enabled": true
-      },
-      "limits": {
-        "timeoutMs": 8000,
-        "maxResults": 16
-      },
-      "update": {
-        "onBoot": true,
-        "interval": "5m",
-        "debounceMs": 15000
-      },
-      "command": "/usr/local/bin/qmd",
+      "command": "/usr/local/bin/qmd",  # QMD 命令路径
       "paths": [
         {
-          "path": "/home/node/.openclaw/workspace",
-          "name": "workspace",
-          "pattern": "**/*.md"
+          "path": "/home/node/.openclaw/workspace",  # 监控的工作空间路径
+          "name": "workspace",  # 名称
+          "pattern": "**/*.md"  # 匹配所有 Markdown 文件
         }
       ]
     }
@@ -120,13 +146,30 @@ ensure_base_config() {
 EOF
 }
 
+# -----------------------------------------------------------------------------
+# 配置同步函数：根据环境变量生成 openclaw.json 配置
+# 核心功能：
+#   1. 加载现有配置（兼容含注释的 JSON）
+#   2. 同步 AI 模型配置（支持多提供商）
+#   3. 同步 IM 渠道配置（飞书、钉钉、QQ、企业微信等）
+#   4. 同步插件配置
+#   5. 同步 Gateway 配置
+#   6. 验证多账号配置冲突
+# 使用方式：通过 CONFIG_FILE 环境变量指定配置文件路径
+# -----------------------------------------------------------------------------
 sync_config_with_env() {
     local config_file="$OPENCLAW_HOME/openclaw.json"
 
+    # 确保基础配置存在
     ensure_base_config
 
     echo "正在根据当前环境变量同步配置状态..."
+    # 使用 Python 脚本处理复杂的 JSON 操作（深度合并、多账号管理等）
     CONFIG_FILE="$config_file" python3 - <<'PYCODE'
+# =============================================================================
+# Python 配置处理脚本开始
+# =============================================================================
+# 导入必要的模块
 import json
 import os
 import re
@@ -134,43 +177,48 @@ import sys
 from copy import deepcopy
 from datetime import datetime
 
-WECOM_ACCOUNT_ID_RE = re.compile(r'^[a-z0-9_-]+$')
+# -----------------------------------------------------------------------------
+# 常量定义：账号 ID 验证正则表达式和各平台字段集合
+# -----------------------------------------------------------------------------
+WECOM_ACCOUNT_ID_RE = re.compile(r'^[a-z0-9_-]+$')  # 企业微信账号 ID 格式：仅小写字母、数字、下划线、中划线
+# 飞书账号配置字段（用于判断哪些字段属于账号级别配置）
 FEISHU_ACCOUNT_FIELDS = {
     'appId', 'appSecret', 'botName', 'dmPolicy', 'allowFrom', 'groupPolicy',
     'groupAllowFrom', 'domain', 'replyMode', 'threadSession', 'groups',
     'footer', 'streaming', 'requireMention'
 }
+# 飞书保留字段（顶层字段，不属于特定账号）
 FEISHU_RESERVED_FIELDS = {
     'enabled', 'appId', 'appSecret', 'botName', 'dmPolicy', 'allowFrom', 'groupPolicy',
     'groupAllowFrom', 'streaming', 'footer', 'requireMention', 'threadSession',
     'replyMode', 'defaultAccount', 'accounts', 'groups'
 }
-DINGTALK_ACCOUNT_FIELDS = {
-    'clientId', 'clientSecret', 'robotCode', 'corpId', 'agentId', 'dmPolicy',
-    'allowFrom', 'groupPolicy', 'messageType', 'cardTemplateId', 'cardTemplateKey',
-    'maxReconnectCycles', 'debug'
-}
-DINGTALK_RESERVED_FIELDS = {
-    'enabled', 'clientId', 'clientSecret', 'robotCode', 'corpId', 'agentId',
-    'dmPolicy', 'allowFrom', 'groupPolicy', 'messageType', 'cardTemplateId',
-    'cardTemplateKey', 'maxReconnectCycles', 'debug', 'journalTTLDays',
-    'showThinking', 'thinkingMessage', 'asyncMode', 'asyncAckText', 'accounts'
-}
+# 企业微信账号配置字段
 WECOM_ACCOUNT_FIELDS = {
     'botId', 'secret', 'dmPolicy', 'allowFrom', 'groupPolicy', 'groupAllowFrom',
     'welcomeMessage', 'sendThinkingMessage', 'agent', 'webhooks', 'network',
     'groupChat', 'dm', 'workspaceTemplate'
 }
+# 企业微信保留字段
 WECOM_RESERVED_FIELDS = {'enabled', 'defaultAccount', 'adminUsers', 'commands', 'dynamicAgents'}
+
+# QQ 机器人账号配置字段
 QQBOT_ACCOUNT_FIELDS = {'appId', 'clientSecret', 'enabled'}
+# QQ 机器人保留字段
 QQBOT_RESERVED_FIELDS = {'enabled', 'appId', 'clientSecret', 'dmPolicy', 'allowFrom', 'groupPolicy', 'accounts'}
 
+# -----------------------------------------------------------------------------
+# 各 IM 渠道插件的安装信息定义
+# source: 安装来源 (npm/git/path)
+# spec: 包名或 Git 地址
+# installPath: 安装路径
+# -----------------------------------------------------------------------------
 CHANNEL_INSTALLS = {
-    'feishu': {'source': 'npm', 'spec': '@openclaw/feishu', 'installPath': '/home/node/.openclaw/extensions/feishu'},
-    'dingtalk': {'source': 'npm', 'spec': 'https://github.com/soimy/clawdbot-channel-dingtalk.git', 'installPath': '/home/node/.openclaw/extensions/dingtalk'},
-    'qqbot': {'source': 'path', 'sourcePath': '/home/node/.openclaw/qqbot', 'installPath': '/home/node/.openclaw/extensions/qqbot'},
-    'napcat': {'source': 'path', 'sourcePath': '/home/node/.openclaw/extensions/napcat', 'installPath': '/home/node/.openclaw/extensions/napcat'},
-    'wecom': {'source': 'npm', 'spec': '@sunnoy/wecom', 'installPath': '/home/node/.openclaw/extensions/wecom'},
+    'feishu': {'source': 'npm', 'spec': '@openclaw/feishu', 'installPath': '/home/node/.openclaw/extensions/feishu'},  # 飞书官方插件
+    'dingtalk': {'source': 'npm', 'spec': 'https://github.com/soimy/clawdbot-channel-dingtalk.git', 'installPath': '/home/node/.openclaw/extensions/dingtalk'},  # 钉钉插件
+    'qqbot': {'source': 'path', 'sourcePath': '/home/node/.openclaw/qqbot', 'installPath': '/home/node/.openclaw/extensions/qqbot'},  # QQ 机器人（本地路径）
+    'napcat': {'source': 'path', 'sourcePath': '/home/node/.openclaw/extensions/napcat', 'installPath': '/home/node/.openclaw/extensions/napcat'},  # NapCat（本地路径）
+    'wecom': {'source': 'npm', 'spec': '@sunnoy/wecom', 'installPath': '/home/node/.openclaw/extensions/wecom'},  # 企业微信插件
 }
 
 
@@ -345,10 +393,6 @@ def is_feishu_account_config(value):
     return isinstance(value, dict) and any(key in value for key in FEISHU_ACCOUNT_FIELDS)
 
 
-def is_dingtalk_account_config(value):
-    return isinstance(value, dict) and any(key in value for key in DINGTALK_ACCOUNT_FIELDS)
-
-
 def is_wecom_account_config(value):
     return isinstance(value, dict) and any(key in value for key in WECOM_ACCOUNT_FIELDS)
 
@@ -366,19 +410,6 @@ def get_feishu_accounts(feishu):
     result = []
     for account_id, cfg in accounts.items():
         if is_valid_account_id(account_id) and is_feishu_account_config(cfg):
-            result.append((account_id, cfg))
-    return result
-
-
-def get_dingtalk_accounts(dingtalk):
-    if not isinstance(dingtalk, dict):
-        return []
-    accounts = dingtalk.get('accounts')
-    if not isinstance(accounts, dict):
-        return []
-    result = []
-    for account_id, cfg in accounts.items():
-        if is_valid_account_id(account_id) and is_dingtalk_account_config(cfg):
             result.append((account_id, cfg))
     return result
 
@@ -443,58 +474,6 @@ def normalize_wecom_config(channels):
         print('✅ 企业微信配置已标准化为当前多账号结构')
 
 
-def normalize_dingtalk_config(channels):
-    dingtalk = channels.get('dingtalk')
-    if not isinstance(dingtalk, dict):
-        return
-
-    migrated = False
-    accounts = dingtalk.get('accounts')
-    if not isinstance(accounts, dict):
-        accounts = {}
-
-    has_structured_accounts = any(
-        is_valid_account_id(account_id) and is_dingtalk_account_config(cfg)
-        for account_id, cfg in accounts.items()
-    )
-    legacy_account = {key: dingtalk[key] for key in DINGTALK_ACCOUNT_FIELDS if key in dingtalk}
-    if legacy_account and not has_structured_accounts:
-        default_cfg = accounts.get('default', {})
-        if not isinstance(default_cfg, dict):
-            default_cfg = {}
-        for key, value in legacy_account.items():
-            default_cfg.setdefault(key, value)
-        accounts['default'] = default_cfg
-        migrated = True
-
-    main_account = accounts.pop('main', None) if 'main' in accounts else None
-    if isinstance(main_account, dict):
-        default_cfg = accounts.get('default', {})
-        if not isinstance(default_cfg, dict):
-            default_cfg = {}
-        for key, value in main_account.items():
-            default_cfg.setdefault(key, value)
-        accounts['default'] = default_cfg
-        migrated = True
-
-    normalized_accounts = {}
-    for account_id, cfg in accounts.items():
-        if is_valid_account_id(account_id) and is_dingtalk_account_config(cfg):
-            normalized_accounts[account_id] = cfg
-
-    if normalized_accounts:
-        dingtalk['accounts'] = normalized_accounts
-        default_cfg = normalized_accounts.get('default')
-        if isinstance(default_cfg, dict):
-            for key in DINGTALK_ACCOUNT_FIELDS:
-                if key in default_cfg:
-                    dingtalk[key] = default_cfg[key]
-        migrated = migrated or dingtalk.get('accounts') != accounts
-
-    if migrated:
-        print('✅ 钉钉配置已标准化为多机器人结构')
-
-
 def normalize_qqbot_config(channels):
     qqbot = channels.get('qqbot')
     if not isinstance(qqbot, dict):
@@ -505,12 +484,8 @@ def normalize_qqbot_config(channels):
     if not isinstance(accounts, dict):
         accounts = {}
 
-    has_structured_accounts = any(
-        is_valid_account_id(account_id) and is_qqbot_account_config(cfg)
-        for account_id, cfg in accounts.items()
-    )
     legacy_account = {key: qqbot[key] for key in ('appId', 'clientSecret') if key in qqbot}
-    if legacy_account and not has_structured_accounts:
+    if legacy_account:
         default_cfg = accounts.get('default', {})
         if not isinstance(default_cfg, dict):
             default_cfg = {}
@@ -560,12 +535,8 @@ def normalize_feishu_config(channels):
     if not isinstance(accounts, dict):
         accounts = {}
 
-    has_structured_accounts = any(
-        is_valid_account_id(account_id) and is_feishu_account_config(cfg)
-        for account_id, cfg in accounts.items()
-    )
     legacy_account = {key: feishu[key] for key in FEISHU_ACCOUNT_FIELDS if key in feishu}
-    if legacy_account and not has_structured_accounts:
+    if legacy_account:
         default_account = accounts.get('default', {})
         if not isinstance(default_account, dict):
             default_account = {}
@@ -753,62 +724,6 @@ def merge_feishu_accounts_from_env(channels, env):
     return changed
 
 
-def merge_dingtalk_accounts_from_env(channels, env):
-    raw = (env.get('DINGTALK_ACCOUNTS_JSON') or '').strip()
-    if not raw:
-        return False
-
-    try:
-        parsed = json.loads(raw)
-    except Exception as ex:
-        raise ValueError(f'DINGTALK_ACCOUNTS_JSON 不是合法 JSON: {ex}')
-
-    if not isinstance(parsed, dict):
-        raise ValueError('DINGTALK_ACCOUNTS_JSON 必须是对象，格式为 {"bot_1": {...}, "bot_2": {...}}')
-
-    if 'accounts' in parsed and isinstance(parsed.get('accounts'), dict):
-        parsed = parsed['accounts']
-    elif 'dingtalk' in parsed and isinstance(parsed.get('dingtalk'), dict):
-        dingtalk_payload = parsed['dingtalk']
-        if 'accounts' in dingtalk_payload and isinstance(dingtalk_payload.get('accounts'), dict):
-            parsed = dingtalk_payload['accounts']
-        else:
-            parsed = {key: value for key, value in dingtalk_payload.items() if key not in DINGTALK_RESERVED_FIELDS}
-
-    dingtalk = channels.get('dingtalk')
-    if not isinstance(dingtalk, dict):
-        dingtalk = {}
-        channels['dingtalk'] = dingtalk
-
-    accounts = dingtalk.get('accounts')
-    if not isinstance(accounts, dict):
-        accounts = {}
-        dingtalk['accounts'] = accounts
-
-    changed = False
-    for account_id, account_cfg in parsed.items():
-        if not is_valid_account_id(account_id):
-            raise ValueError(f'DINGTALK_ACCOUNTS_JSON 账号 ID 不合法: {account_id}，仅支持小写字母、数字、-、_')
-        if not isinstance(account_cfg, dict) or not is_dingtalk_account_config(account_cfg):
-            raise ValueError(f'DINGTALK_ACCOUNTS_JSON 账号配置非法: {account_id}，至少包含 clientId/clientSecret/robotCode/corpId/agentId/messageType 中的一项')
-
-        old_cfg = accounts.get(account_id)
-        if not isinstance(old_cfg, dict):
-            old_cfg = {}
-        accounts[account_id] = deep_merge(old_cfg, account_cfg)
-        changed = True
-
-    if changed:
-        dingtalk['enabled'] = True
-        default_cfg = accounts.get('default')
-        if isinstance(default_cfg, dict):
-            for key in DINGTALK_ACCOUNT_FIELDS:
-                if key in default_cfg:
-                    dingtalk[key] = default_cfg[key]
-        print('✅ 已从钉钉多机器人环境变量同步配置')
-    return changed
-
-
 def merge_qqbot_bots_from_env(channels, env):
     raw = (env.get('QQBOT_BOTS_JSON') or '').strip()
     if not raw:
@@ -935,50 +850,6 @@ def validate_wecom_multi_accounts(channels):
         raise ValueError(f'企业微信 Agent ID 冲突（可能导致消息路由错乱）: {detail}')
 
 
-def validate_dingtalk_multi_accounts(channels):
-    dingtalk = channels.get('dingtalk')
-    if not isinstance(dingtalk, dict):
-        return
-
-    accounts = get_dingtalk_accounts(dingtalk)
-    if not accounts:
-        return
-
-    client_id_index = {}
-    robot_code_index = {}
-    agent_id_index = {}
-    for account_id, cfg in accounts:
-        if not is_valid_account_id(account_id):
-            raise ValueError(f'钉钉账号 ID 不合法: {account_id}，仅支持小写字母、数字、-、_')
-
-        client_id = str(cfg.get('clientId') or '').strip()
-        if client_id:
-            client_id_index.setdefault(client_id, []).append(account_id)
-
-        robot_code = str(cfg.get('robotCode') or '').strip()
-        if robot_code:
-            robot_code_index.setdefault(robot_code, []).append(account_id)
-
-        agent_id = str(cfg.get('agentId') or '').strip()
-        if agent_id:
-            agent_id_index.setdefault(agent_id, []).append(account_id)
-
-    duplicate_client_ids = {key: value for key, value in client_id_index.items() if len(value) > 1}
-    if duplicate_client_ids:
-        detail = '; '.join([f"{client_id}: {', '.join(ids)}" for client_id, ids in duplicate_client_ids.items()])
-        raise ValueError(f'钉钉 clientId 冲突（可能导致消息路由错乱）: {detail}')
-
-    duplicate_robot_codes = {key: value for key, value in robot_code_index.items() if len(value) > 1}
-    if duplicate_robot_codes:
-        detail = '; '.join([f"{robot_code}: {', '.join(ids)}" for robot_code, ids in duplicate_robot_codes.items()])
-        raise ValueError(f'钉钉 robotCode 冲突（可能导致消息路由错乱）: {detail}')
-
-    duplicate_agent_ids = {key: value for key, value in agent_id_index.items() if len(value) > 1}
-    if duplicate_agent_ids:
-        detail = '; '.join([f"{agent_id}: {', '.join(ids)}" for agent_id, ids in duplicate_agent_ids.items()])
-        raise ValueError(f'钉钉 Agent ID 冲突（可能导致消息路由错乱）: {detail}')
-
-
 def validate_qqbot_multi_accounts(channels):
     qqbot = channels.get('qqbot')
     if not isinstance(qqbot, dict):
@@ -1013,13 +884,10 @@ class SyncContext:
         self.default_dm_policy = env.get('DM_POLICY') or 'open'
         self.default_allow_from = parse_csv(env.get('ALLOW_FROM')) or ['*']
         self.default_group_policy = env.get('GROUP_POLICY') or 'open'
-        self.multi_account_channels = {'feishu', 'dingtalk', 'wecom', 'qqbot'}
+        self.multi_account_channels = {'feishu', 'wecom', 'qqbot'}
         self.has_feishu_single_env = bool((env.get('FEISHU_APP_ID') or '').strip() and (env.get('FEISHU_APP_SECRET') or '').strip())
         self.has_feishu_accounts_env = bool((env.get('FEISHU_ACCOUNTS_JSON') or '').strip())
         self.has_feishu_any_env = self.has_feishu_single_env or self.has_feishu_accounts_env
-        self.has_dingtalk_single_env = bool((env.get('DINGTALK_CLIENT_ID') or '').strip() and (env.get('DINGTALK_CLIENT_SECRET') or '').strip())
-        self.has_dingtalk_accounts_env = bool((env.get('DINGTALK_ACCOUNTS_JSON') or '').strip())
-        self.has_dingtalk_any_env = self.has_dingtalk_single_env or self.has_dingtalk_accounts_env
         self.has_wecom_single_env = bool((env.get('WECOM_BOT_ID') or '').strip() and (env.get('WECOM_SECRET') or '').strip())
         self.has_wecom_accounts_env = bool((env.get('WECOM_ACCOUNTS_JSON') or '').strip())
         self.has_wecom_any_env = self.has_wecom_single_env or self.has_wecom_accounts_env
@@ -1056,16 +924,7 @@ class SyncContext:
         return isinstance(entry, dict) and (entry.get('enabled') is False)
 
 
-def is_openclaw_sync_enabled(env):
-    sync_all = (env.get('SYNC_OPENCLAW_CONFIG') or 'true').strip().lower()
-    return sync_all in ('', 'true', '1', 'yes')
-
-
 def sync_models(ctx):
-    if not is_openclaw_sync_enabled(ctx.env):
-        print('ℹ️ 已关闭整体配置同步，跳过模型同步')
-        return
-
     sync_model = (ctx.env.get('SYNC_MODEL_CONFIG') or 'true').strip().lower()
     if sync_model not in ('', 'true', '1', 'yes'):
         return
@@ -1140,56 +999,12 @@ def sync_models(ctx):
     workspace = ctx.env.get('WORKSPACE') or '/home/node/.openclaw/workspace'
     ctx.config['agents']['defaults']['workspace'] = workspace
 
-    memory = ensure_path(ctx.config, ['memory'])
-    memory.setdefault('backend', 'qmd')
-    memory.setdefault('citations', 'auto')
-    memory_cfg = ensure_path(memory, ['qmd'])
-    memory_cfg.setdefault('includeDefaultMemory', True)
-    ensure_path(memory_cfg, ['sessions']).setdefault('enabled', True)
-    limits_cfg = ensure_path(memory_cfg, ['limits'])
-    limits_cfg.setdefault('timeoutMs', 8000)
-    limits_cfg.setdefault('maxResults', 16)
-    update_cfg = ensure_path(memory_cfg, ['update'])
-    update_cfg.setdefault('onBoot', True)
-    update_cfg.setdefault('interval', '5m')
-    update_cfg.setdefault('debounceMs', 15000)
-    paths = memory_cfg.get('paths')
-    if not isinstance(paths, list):
-        paths = []
-        memory_cfg['paths'] = paths
-    workspace_path = next((item for item in paths if isinstance(item, dict) and item.get('name') == 'workspace'), None)
-    if not workspace_path:
-        workspace_path = {'name': 'workspace'}
-        paths.append(workspace_path)
-    workspace_path['path'] = workspace
-    workspace_path['pattern'] = '**/*.md'
-
-    if memory.get('backend') == 'qmd':
-        # 探测 qmd 命令路径
-        import subprocess
-        qmd_path = '/usr/local/bin/qmd'
-        try:
-            # 尝试运行 qmd --version 来确认它是否能正常执行（处理 Illegal instruction）
-            subprocess.run([qmd_path, '--version'], capture_output=True, check=True)
-        except Exception:
-            try:
-                # 尝试 npm 全局安装的默认路径
-                qmd_path = 'qmd'
-                subprocess.run([qmd_path, '--version'], capture_output=True, check=True)
-                qmd_path = subprocess.check_output(['which', 'qmd']).decode().strip()
-            except Exception:
-                print('⚠️ 警告: qmd 命令执行失败，向量内存功能可能受限')
-                qmd_path = None
-
-        if qmd_path:
-            memory_cfg['command'] = qmd_path
-        else:
-            # 如果 qmd 不可用，禁用内存后端或切换回默认
-            if memory.get('backend') == 'qmd':
-                print('⚠️ 自动禁用 qmd 内存后端（命令不可用或架构不兼容）')
-                memory['backend'] = 'off'
-    else:
-        memory_cfg.setdefault('command', '/usr/local/bin/qmd')
+    memory_cfg = ctx.config.get('memory', {}).get('qmd')
+    if isinstance(memory_cfg, dict):
+        memory_cfg['command'] = '/usr/local/bin/qmd'
+        for path_item in memory_cfg.get('paths', []):
+            if path_item.get('name') == 'workspace':
+                path_item['path'] = workspace
 
     msg = f'✅ 模型同步完成: 主模型={primary_model}'
     if primary_model_raw:
@@ -1242,14 +1057,16 @@ def sync_feishu_channel(ctx, channel):
     if feishu_groups is not None:
         channel['groups'] = feishu_groups
 
-    channel.setdefault('accounts', {})
-    channel['accounts'][account_id] = {
+    default_account = ensure_path(channel, ['accounts', account_id])
+    # default_account.clear()
+    default_account.update({
         'appId': env['FEISHU_APP_ID'],
         'appSecret': env['FEISHU_APP_SECRET'],
         'botName': env.get('FEISHU_BOT_NAME') or 'OpenClaw Bot',
         'dmPolicy': env.get('FEISHU_DM_POLICY') or ctx.default_dm_policy,
         'allowFrom': parse_csv(env.get('FEISHU_ALLOW_FROM')) or ctx.default_allow_from,
-    }
+        'groupPolicy': env.get('FEISHU_GROUP_POLICY') or ctx.default_group_policy,
+    })
 
 
 def sync_dingtalk_channel(ctx, channel):
@@ -1261,54 +1078,13 @@ def sync_dingtalk_channel(ctx, channel):
         'robotCode': env.get('DINGTALK_ROBOT_CODE') or env['DINGTALK_CLIENT_ID'],
         'dmPolicy': env.get('DINGTALK_DM_POLICY') or ctx.default_dm_policy,
         'groupPolicy': env.get('DINGTALK_GROUP_POLICY') or ctx.default_group_policy,
-        'messageType': env.get('DINGTALK_MESSAGE_TYPE') or 'markdown',
+        'messageType': 'markdown',
         'allowFrom': parse_csv(env.get('DINGTALK_ALLOW_FROM')) or ctx.default_allow_from,
     })
     if env.get('DINGTALK_CORP_ID'):
         channel['corpId'] = env['DINGTALK_CORP_ID']
     if env.get('DINGTALK_AGENT_ID'):
         channel['agentId'] = env['DINGTALK_AGENT_ID']
-    if env.get('DINGTALK_CARD_TEMPLATE_ID'):
-        channel['cardTemplateId'] = env['DINGTALK_CARD_TEMPLATE_ID']
-    if env.get('DINGTALK_CARD_TEMPLATE_KEY'):
-        channel['cardTemplateKey'] = env['DINGTALK_CARD_TEMPLATE_KEY']
-    if env.get('DINGTALK_MAX_RECONNECT_CYCLES'):
-        channel['maxReconnectCycles'] = int(env['DINGTALK_MAX_RECONNECT_CYCLES'])
-    if env.get('DINGTALK_DEBUG'):
-        channel['debug'] = parse_bool(env.get('DINGTALK_DEBUG'), False)
-    if env.get('DINGTALK_JOURNAL_TTL_DAYS'):
-        channel['journalTTLDays'] = int(env['DINGTALK_JOURNAL_TTL_DAYS'])
-    if env.get('DINGTALK_SHOW_THINKING'):
-        channel['showThinking'] = parse_bool(env.get('DINGTALK_SHOW_THINKING'), False)
-    if env.get('DINGTALK_THINKING_MESSAGE'):
-        channel['thinkingMessage'] = env['DINGTALK_THINKING_MESSAGE']
-    if env.get('DINGTALK_ASYNC_MODE'):
-        channel['asyncMode'] = parse_bool(env.get('DINGTALK_ASYNC_MODE'), False)
-    if env.get('DINGTALK_ASYNC_ACK_TEXT'):
-        channel['asyncAckText'] = env['DINGTALK_ASYNC_ACK_TEXT']
-
-    account = ensure_path(channel, ['accounts', 'default'])
-    account.update({
-        'clientId': env['DINGTALK_CLIENT_ID'],
-        'clientSecret': env['DINGTALK_CLIENT_SECRET'],
-        'robotCode': env.get('DINGTALK_ROBOT_CODE') or env['DINGTALK_CLIENT_ID'],
-        'dmPolicy': env.get('DINGTALK_DM_POLICY') or ctx.default_dm_policy,
-        'groupPolicy': env.get('DINGTALK_GROUP_POLICY') or ctx.default_group_policy,
-        'messageType': env.get('DINGTALK_MESSAGE_TYPE') or 'markdown',
-        'allowFrom': parse_csv(env.get('DINGTALK_ALLOW_FROM')) or ctx.default_allow_from,
-    })
-    if env.get('DINGTALK_CORP_ID'):
-        account['corpId'] = env['DINGTALK_CORP_ID']
-    if env.get('DINGTALK_AGENT_ID'):
-        account['agentId'] = env['DINGTALK_AGENT_ID']
-    if env.get('DINGTALK_CARD_TEMPLATE_ID'):
-        account['cardTemplateId'] = env['DINGTALK_CARD_TEMPLATE_ID']
-    if env.get('DINGTALK_CARD_TEMPLATE_KEY'):
-        account['cardTemplateKey'] = env['DINGTALK_CARD_TEMPLATE_KEY']
-    if env.get('DINGTALK_MAX_RECONNECT_CYCLES'):
-        account['maxReconnectCycles'] = int(env['DINGTALK_MAX_RECONNECT_CYCLES'])
-    if env.get('DINGTALK_DEBUG'):
-        account['debug'] = parse_bool(env.get('DINGTALK_DEBUG'), False)
 
 
 def sync_qqbot_channel(ctx, channel):
@@ -1490,10 +1266,6 @@ def apply_channel_rules(ctx):
             ctx.disable_channel(channel_id)
             continue
 
-        if channel_id == 'dingtalk' and not ctx.has_dingtalk_any_env:
-            ctx.disable_channel(channel_id)
-            continue
-
         if channel_id == 'wecom' and not ctx.has_wecom_any_env:
             ctx.disable_channel(channel_id)
             continue
@@ -1533,18 +1305,6 @@ def apply_multi_account_plugin_state(ctx):
     elif not ctx.has_feishu_any_env and not feishu_accounts:
         ctx.disable_channel('feishu')
         print('ℹ️ 飞书未提供任何环境变量，保持插件禁用')
-
-    dingtalk_accounts = get_dingtalk_accounts(ctx.channels.get('dingtalk'))
-    if ctx.has_dingtalk_accounts_env:
-        if dingtalk_accounts:
-            ctx.enable_channel('dingtalk', install=True)
-            print('✅ 已根据钉钉多机器人环境变量启用插件')
-        else:
-            ctx.disable_channel('dingtalk')
-            print('ℹ️ 钉钉多机器人环境变量未生成有效账号，保持插件禁用')
-    elif not ctx.has_dingtalk_any_env:
-        ctx.disable_channel('dingtalk')
-        print('ℹ️ 钉钉未提供任何环境变量，保持插件禁用')
 
     wecom_accounts = get_wecom_accounts(ctx.channels.get('wecom'))
     if ctx.has_wecom_accounts_env:
@@ -1607,33 +1367,23 @@ def finalize_plugins(ctx):
 
 
 def sync_channels_and_plugins(ctx):
-    if not is_openclaw_sync_enabled(ctx.env):
-        print('ℹ️ 已关闭整体配置同步，跳过渠道与插件同步')
-        return
-
     if ctx.env.get('OPENCLAW_PLUGINS_ENABLED'):
         ctx.plugins['enabled'] = ctx.env['OPENCLAW_PLUGINS_ENABLED'].lower() == 'true'
 
     apply_channel_rules(ctx)
     apply_wecom_legacy_v1_compat(ctx)
     merge_feishu_accounts_from_env(ctx.channels, ctx.env)
-    merge_dingtalk_accounts_from_env(ctx.channels, ctx.env)
     merge_wecom_accounts_from_env(ctx.channels, ctx.env)
     merge_qqbot_bots_from_env(ctx.channels, ctx.env)
     apply_multi_account_plugin_state(ctx)
     apply_feishu_plugin_switch(ctx)
     finalize_plugins(ctx)
     validate_feishu_multi_accounts(ctx.channels)
-    validate_dingtalk_multi_accounts(ctx.channels)
     validate_wecom_multi_accounts(ctx.channels)
     validate_qqbot_multi_accounts(ctx.channels)
 
 
 def sync_gateway(ctx):
-    if not is_openclaw_sync_enabled(ctx.env):
-        print('ℹ️ 已关闭整体配置同步，跳过 Gateway 同步')
-        return
-
     if not ctx.env.get('OPENCLAW_GATEWAY_TOKEN'):
         return
 
@@ -1661,7 +1411,6 @@ def sync():
         ctx = SyncContext(config, os.environ)
 
         migrate_feishu_config(ctx.channels)
-        normalize_dingtalk_config(ctx.channels)
         normalize_wecom_config(ctx.channels)
         normalize_qqbot_config(ctx.channels)
 
@@ -1683,22 +1432,9 @@ PYCODE
 }
 
 normalize_sync_check() {
-    local global_sync_check="${SYNC_OPENCLAW_CONFIG:-true}"
-    local model_sync_check="${SYNC_MODEL_CONFIG:-true}"
-    global_sync_check="$(echo "$global_sync_check" | tr '[:upper:]' '[:lower:]' | xargs)"
-    model_sync_check="$(echo "$model_sync_check" | tr '[:upper:]' '[:lower:]' | xargs)"
-
-    if [ "$global_sync_check" = "false" ] || [ "$global_sync_check" = "0" ] || [ "$global_sync_check" = "no" ]; then
-        echo "global-disabled"
-        return
-    fi
-
-    if [ "$model_sync_check" = "false" ] || [ "$model_sync_check" = "0" ] || [ "$model_sync_check" = "no" ]; then
-        echo "model-disabled"
-        return
-    fi
-
-    echo "enabled"
+    local sync_check="${SYNC_MODEL_CONFIG:-true}"
+    sync_check="$(echo "$sync_check" | tr '[:upper:]' '[:lower:]' | xargs)"
+    echo "$sync_check"
 }
 
 collect_provider_names() {
@@ -1748,13 +1484,8 @@ print_model_summary() {
     local provider_names extra_providers i api_key_var provider_name_var provider_name
     sync_check="$(normalize_sync_check)"
 
-    if [ "$sync_check" = "global-disabled" ]; then
-        echo "整体配置: 手动模式 (跳过环境变量同步)"
-        return
-    fi
-
-    if [ "$sync_check" = "model-disabled" ]; then
-        echo "模型配置: 手动模式 (跳过模型环境变量同步)"
+    if [ "$sync_check" = "false" ] || [ "$sync_check" = "0" ] || [ "$sync_check" = "no" ]; then
+        echo "模型配置: 手动模式 (跳过环境变量同步)"
         return
     fi
 
@@ -1804,65 +1535,108 @@ print_runtime_summary() {
     echo "允许插件列表已由系统自动同步"
 }
 
+# -----------------------------------------------------------------------------
+# 运行时环境变量设置函数
+# 设置 Bun、PATH 和 DBUS 等环境变量
+# -----------------------------------------------------------------------------
 setup_runtime_env() {
     export BUN_INSTALL="/usr/local"
     export PATH="$BUN_INSTALL/bin:$PATH"
-    export DBUS_SESSION_BUS_ADDRESS=/dev/null
+    export DBUS_SESSION_BUS_ADDRESS=/dev/null  # 禁用 D-Bus（容器环境不需要）
 }
 
+# -----------------------------------------------------------------------------
+# 清理函数：接收停止信号时优雅关闭服务
+# 捕获的信号：SIGTERM, SIGINT, SIGQUIT
+# -----------------------------------------------------------------------------
 cleanup() {
-    echo "=== 接收到停止信号,正在关闭服务 ==="
+    echo "=== 接收到停止信号，正在关闭服务 ==="
     if [ -n "$GATEWAY_PID" ]; then
+        # 发送 TERM 信号给 Gateway 进程
         kill -TERM "$GATEWAY_PID" 2>/dev/null || true
+        # 等待进程退出
         wait "$GATEWAY_PID" 2>/dev/null || true
     fi
     echo "=== 服务已停止 ==="
     exit 0
 }
 
+# -----------------------------------------------------------------------------
+# 安装信号处理器函数
+# 捕获退出信号并执行清理操作
+# -----------------------------------------------------------------------------
 install_signal_traps() {
     trap cleanup SIGTERM SIGINT SIGQUIT
 }
 
+# -----------------------------------------------------------------------------
+# 启动 Gateway 服务函数
+# 以 node 用户身份运行 OpenClaw Gateway
+# 使用后台运行模式，保存 PID 到 GATEWAY_PID 变量
+# -----------------------------------------------------------------------------
 start_gateway() {
     log_section "启动 OpenClaw Gateway"
 
+    # 使用 gosu 切换到 node 用户，并设置必要的环境变量
     gosu node env HOME=/home/node DBUS_SESSION_BUS_ADDRESS=/dev/null \
         BUN_INSTALL="/usr/local" PATH="/usr/local/bin:$PATH" \
         openclaw gateway run \
         --bind "$OPENCLAW_GATEWAY_BIND" \
         --port "$OPENCLAW_GATEWAY_PORT" \
         --token "$OPENCLAW_GATEWAY_TOKEN" \
-        --verbose &
+        --verbose &  # 后台运行
     GATEWAY_PID=$!
 
     echo "=== OpenClaw Gateway 已启动 (PID: $GATEWAY_PID) ==="
 }
 
+# -----------------------------------------------------------------------------
+# 等待 Gateway 进程函数
+# 阻塞直到 Gateway 进程退出，并传递退出码
+# -----------------------------------------------------------------------------
 wait_for_gateway() {
     wait "$GATEWAY_PID"
     local exit_code=$?
-    echo "=== OpenClaw Gateway 已退出 (退出码: $exit_code) ==="
+    echo "=== OpenClaw Gateway 已退出 (退出码：$exit_code) ==="
     exit "$exit_code"
 }
 
+# -----------------------------------------------------------------------------
+# 最终权限修复函数
+# 在配置生成完成后，再次确保所有文件属于 node 用户
+# -----------------------------------------------------------------------------
 finalize_permissions() {
     if is_root; then
         chown -R node:node "$OPENCLAW_HOME" || true
     fi
 }
 
+# =============================================================================
+# 主函数：OpenClaw 容器启动流程的入口点
+# 执行步骤：
+#   1. 输出初始化标题
+#   2. 创建必要目录
+#   3. 修复挂载目录权限
+#   4. 同步环境变量到配置文件
+#   5. 最终权限修复
+#   6. 打印运行时摘要
+#   7. 设置运行时环境变量
+#   8. 安装信号处理器
+#   9. 启动 Gateway 服务
+#   10. 等待 Gateway 退出（阻塞）
+# =============================================================================
 main() {
     log_section "OpenClaw 初始化脚本"
-    ensure_directories
-    fix_permissions_if_needed
-    sync_config_with_env
-    finalize_permissions
-    print_runtime_summary
-    setup_runtime_env
-    install_signal_traps
-    start_gateway
-    wait_for_gateway
+    ensure_directories           # 创建目录
+    fix_permissions_if_needed    # 修复权限
+    sync_config_with_env         # 同步配置
+    finalize_permissions         # 最终权限修复
+    print_runtime_summary        # 打印摘要
+    setup_runtime_env            # 设置环境变量
+    install_signal_traps         # 安装信号处理
+    start_gateway                # 启动服务
+    wait_for_gateway             # 等待退出
 }
 
+# 执行主函数
 main
