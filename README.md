@@ -1,6 +1,4 @@
-# OpenClaw使用
-
-## 项目文件说明
+# 项目文件说明
 
 
 - [`Dockerfile`](Dockerfile) - Docker 镜像构建文件
@@ -10,13 +8,13 @@
 - [`.dockerignore`](.dockerignore) - Docker 构建忽略文件
 - [`openclaw.json.example`](openclaw.json.example) - OpenClaw 默认配置文件示例
 
-## 参考项目
+# 参考项目
 
  https://github.com/justlovemaki/OpenClaw-Docker-CN-IM
 
-## 部署
+# 部署
 
-### 镜像源配置
+## 镜像源配置
 
 **docker镜像源**
 
@@ -50,16 +48,16 @@ deb https://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe m
 sudo apt update
 ```
 
-### 方式一：使用预构建镜像
+## 方式一：使用预构建镜像
 
-#### 1. 下载配置文件
+### 1. 下载配置文件
 
 ```bash
 wget https://raw.githubusercontent.com/justlovemaki/OpenClaw-Docker-CN-IM/main/docker-compose.yml
 wget https://raw.githubusercontent.com/justlovemaki/OpenClaw-Docker-CN-IM/main/.env.example
 ```
 
-#### 2. 配置环境变量
+### 2. 配置环境变量
 
 ```bash
 # 复制环境变量模板
@@ -79,19 +77,19 @@ nano .env
 
 > 💡 **提示**：IM 平台配置为可选项，可以先启动服务，后续再配置需要的平台。
 
-#### 3. 启动服务
+### 3. 启动服务
 
 ```bash
 docker-compose up -d
 ```
 
-#### 4. 查看日志
+### 4. 查看日志
 
 ```bash
 docker-compose logs -f
 ```
 
-#### 5. 更新 / 升级建议
+### 5. 更新 / 升级建议
 
 推荐直接克隆项目进行维护，这样后续升级时可以先同步项目内的 [`README.md`](README.md)、[`docker-compose.yml`](docker-compose.yml) 和 [`.env.example`](.env.example) 等文件，再强制拉取最新镜像并重建启动，避免遗漏新的配置项或编排变更。
 
@@ -116,13 +114,13 @@ docker compose up -d --force-recreate
 
 ![image-20260314175037619](README.assets/image-20260314175037619.png)
 
-####  6. 停止服务
+###  6. 停止服务
 
 ```bash
 docker-compose down
 ```
 
-#### 7. 进入容器
+### 7. 进入容器
 
 如需进入容器进行调试或执行命令：
 
@@ -155,16 +153,16 @@ npx -y @larksuite/openclaw-lark-tools install
 
 ![image-20260314175029383](README.assets/image-20260314175029383.png)
 
-### 方式二：自行构建镜像
+## 方式二：自行构建镜像
 
-#### 1. 克隆项目
+### 1. 克隆项目
 
 ```bash
 git clone git@github.com:Auroraol/openclaw-docker-cn.git
 cd openclaw-docker-cn
 ```
 
-#### 2. 本地构建镜像
+### 2. 本地构建镜像
 
 可以注释不需要的插件, 加速构建镜像
 
@@ -172,7 +170,7 @@ cd openclaw-docker-cn
 docker build -t openclaw:local .
 ```
 
-#### 3. 配置环境变量
+### 3. 配置环境变量
 
 ```bash
 # 复制环境变量模板
@@ -182,23 +180,23 @@ cp .env.example .env
 nano .env
 ```
 
-#### 4. 启动服务
+### 4. 启动服务
 
 ```bash
 docker-compose up -d
 ```
 
-## 使用效果
+# 使用效果
 
-### 飞书机器人
+## 飞书机器人
 
 <img src="README.assets/image-20260315030632171.png" style="zoom:150%;" />
 
-### qq机器人
+## qq机器人
 
 ![image-20260315025833756](README.assets/image-20260315025833756.png)
 
-## 配置
+# 配置
 
 配置文件:
 
@@ -206,7 +204,7 @@ docker-compose up -d
 cat ~/.openclaw/openclaw.json   # 所有配置持久化在此
 ```
 
-### LLM 配置
+## LLM 配置
 
 支持 **OpenAI 协议**和 **Claude 协议**两种 API 格式。
 
@@ -230,7 +228,7 @@ cat ~/.openclaw/openclaw.json   # 所有配置持久化在此
 | `openai-completions` | OpenAI、Gemini 等 | 需要 `/v1` 后缀 | - |
 | `anthropic-messages` | Claude | 不需要 `/v1` 后缀 | Prompt Caching、Extended Thinking |
 
-#### 配置示例
+### 配置示例
 
 在 `.env` 文件中配置：
 
@@ -282,21 +280,21 @@ MODEL2_MAX_TOKENS=8192
 - `aliyun/qwen-vl-max`
 - `model2/claude-sonnet-4-5`
 
-### Gateway 配置
+## Gateway 配置
 
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
 | `OPENCLAW_GATEWAY_TOKEN` | Gateway 访问令牌 | `123456` |
-| `OPENCLAW_GATEWAY_BIND` | 绑定地址 | `lan` |
+| `OPENCLAW_GATEWAY_BIND` | 绑定地址 | `lan 只绑定到局域网地址` |
 | `OPENCLAW_GATEWAY_PORT` | Gateway 端口 | `18789` |
 | `OPENCLAW_BRIDGE_PORT` | Bridge 端口 | `18790` |
 
-#### 配置示例
+### 配置示例
 
 在 `.env` 文件中配置：
 
 ```bash
-## 网关 token，用于认证
+# 网关 token，用于认证
 OPENCLAW_GATEWAY_TOKEN=123456
 OPENCLAW_GATEWAY_BIND=lan
 OPENCLAW_GATEWAY_PORT=18789
@@ -316,6 +314,24 @@ OPENCLAW_PLUGINS_ENABLED=true
 
 **可以直接访问localhost:18789**
 
+### `origin not allowed`
+
+获取Windows IP
+
+```
+opt/openclaw-main # WINDOWS_IP=$(ip route | grep default | awk '{print $3}')
+echo "Windows IP: $WINDOWS_IP"
+Windows IP: 172.18.240.1
+```
+
+在 `.env` 文件中配置Windows IP
+
+```
+OPENCLAW_GATEWAY_ALLOWED_ORIGINS=http://localhost,  http://localhost:18789,http://127.0.0.1:18789, http://172.18.240.1:18789,http://172.18.240.1,
+```
+
+### `pairing required`
+
 ```
 # 进入容器
 docker exec -it openclaw-gateway /bin/bash
@@ -327,9 +343,15 @@ openclaw devices list
 openclaw devices approve 这里填 request-id
 ```
 
-![image-20260314181625121](README.assets/image-20260314181625121.png)
+![image-20260315171648660](README.assets/image-20260315171648660.png)
 
-### 聊天策略
+![image-20260315172051470](README.assets/image-20260315172051470.png)
+
+效果
+
+![image-20260315172151884](README.assets/image-20260315172151884.png)
+
+## 聊天策略
 
 私聊策略 (`DM_POLICY`)
 
@@ -344,7 +366,9 @@ openclaw devices approve 这里填 request-id
 - `closed` — 不响应任何群
 - `allowlist` — 仅白名单群组（需配合 `GROUP_ALLOW_FROM` 列表）
 
-### 工作空间配置
+![image-20260315173349975](README.assets/image-20260315173349975.png)
+
+## 工作空间配置
 
 WORKSPACE 是 AI 机器人可以安全访问和修改文件的专用目录，类似于一个"沙箱环境"。
 
@@ -354,7 +378,7 @@ WORKSPACE 是 AI 机器人可以安全访问和修改文件的专用目录，类
 
 ---
 
-##  skills使用
+#  skills使用
 
 ```bash
 docker exec -it openclaw-gateway /bin/bash
@@ -364,7 +388,7 @@ openclaw skills list
 
 ![image-20260314210122982](README.assets/image-20260314210122982.png)
 
-### 安装技能
+## 安装技能
 
 ```bash
 # 登录
@@ -377,7 +401,7 @@ npx clawhub install capability-evolver
 npx clawhub install capability-evolver self-improving-agent tavily-search summarize github
 ```
 
-### 示例
+## 示例
 
 登录clawhub
 
@@ -403,9 +427,17 @@ node@e217d58ae6b0:~$ npx clawhub install agent-browser
 
 <img src="README.assets/image-20260314213032665.png" alt="image-20260314213032665" style="zoom:150%;" />
 
-## 常见问题
+web查看
 
-### Q: 修改了环境变量但配置没有生效？
+![image-20260315180724123](README.assets/image-20260315180724123.png)
+
+# 常见问题
+
+## 其他常见问题
+
+[OpenClawChineseTranslation/docs/FAQ.md at main · 1186258278/OpenClawChineseTranslation](https://github.com/1186258278/OpenClawChineseTranslation/blob/main/docs/FAQ.md#missing-workspace-template-agentsmd)
+
+## Q: 修改了环境变量但配置没有生效？
 
 容器启动时只有在配置文件不存在时才会生成新配置。如需重新生成配置，请删除现有配置文件：
 
@@ -423,29 +455,29 @@ rm -rf ~/.openclaw
 docker-compose up -d
 ```
 
-### Q: 连接 AIClient-2-API 失败？
+## Q: 连接 AIClient-2-API 失败？
 
 - 确认 AIClient-2-API 服务运行中
 - 检查 Base URL 是否正确（OpenAI 协议需要 `/v1` 后缀）
 - 尝试使用 `127.0.0.1` 替代 `localhost`
 
-### Q: 401 错误？
+## Q: 401 错误？
 
 - 检查 API Key 是否正确配置
 - 确认环境变量 `API_KEY` 已设置
 
-### Q: 模型不可用？
+## Q: 模型不可用？
 
 - 在 AIClient-2-API Web UI 确认已配置对应提供商
 - 重启容器：`docker-compose restart`
 
-### Q: 飞书机器人能发消息但收不到消息？
+## Q: 飞书机器人能发消息但收不到消息？
 
 - 检查是否配置了事件订阅（最容易遗漏的配置）
 - 确认事件配置方式选择了"使用长连接接收事件"
 - 确认已添加 `im.message.receive_v1` 事件
 
-### Q: Telegram 机器人如何配对？
+## Q: Telegram 机器人如何配对？
 
 如果需要启用 Telegram，必须提供有效的 `TELEGRAM_BOT_TOKEN`，启用后需要进入容器（参考“进入容器”章节）执行以下命令进行配对审批：
 
@@ -459,18 +491,18 @@ openclaw pairing approve telegram {token}
 
 并且需要重启 Docker 服务使配置生效。
 
-### Q: 同样的启动命令，为什么有人报错 `Permission denied`？
+## Q: 同样的启动命令，为什么有人报错 `Permission denied`？
 
 这通常不是命令本身不稳定，而是**运行上下文变化**导致：宿主机挂载目录所有者（UID/GID）与容器内进程用户不一致。
 
-#### 为什么会“偶发”
+## 为什么会“偶发”
 
 - 同样是 `docker compose up -d`，但目录来源不同：
   - 你手动创建目录：可能是当前用户（如 `1000:1000`）
   - Docker 自动创建或使用 sudo 创建：可能是 `root:root`（`0:0`）
 - 本镜像最终以 `node` 用户运行网关；若挂载目录归属不匹配，就可能无法写入。
 
-#### 快速排查
+## 快速排查
 
 ```bash
 # 1) 看宿主机目录归属（Linux）
@@ -482,7 +514,7 @@ docker run --rm justlikemaki/openclaw-docker-cn-im:latest id
 
 若容器用户是 `uid=1000`，而宿主机目录是 `uid=0` 且权限不足，就会报错。
 
-#### 解决方案（推荐顺序）
+## 解决方案（推荐顺序）
 
 1. **宿主机修正目录所有权（最直接）**
 
@@ -508,7 +540,7 @@ docker compose up -d
 
 若权限看起来没问题但仍拒绝访问，请给挂载卷加 `:z` 或 `:Z` 标签。
 
-#### 本项目已做的稳态处理
+## 本项目已做的稳态处理
 
 - [`docker-compose.yml`](docker-compose.yml) 新增可选 `user` 配置：`OPENCLAW_RUN_USER`（默认 `0:0`）
 - [`init.sh`](init.sh) 启动时会：
@@ -520,11 +552,11 @@ docker compose up -d
 
 ---
 
-## IM 平台配置
+# IM 平台配置
 
-### 飞书配置
+## 飞书配置
 
-#### 1. 获取飞书机器人凭证
+### 1. 获取飞书机器人凭证
 
 1. 在 [飞书开放平台](https://open.feishu.cn/) 创建自建应用
 2. 添加应用能力-机器人
@@ -534,7 +566,7 @@ docker compose up -d
 
 ![image-20260315023152066](README.assets/image-20260315023152066.png)
 
-#### 2. 必需权限（租户级别）
+### 2. 必需权限（租户级别）
 
 | 权限 | 范围 | 说明 |
 |------|------|------|
@@ -546,7 +578,7 @@ docker compose up -d
 | `im:chat.members:bot_access` | 群成员 | 获取群成员信息 |
 | `im:chat.access_event.bot_p2p_chat:read` | 聊天事件 | 读取机器人单聊事件 |
 
-#### 3. 推荐权限（租户级别）
+### 3. 推荐权限（租户级别）
 
 | 权限 | 范围 | 说明 |
 |------|------|------|
@@ -556,7 +588,7 @@ docker compose up -d
 | `application:bot.menu:write` | 机器人菜单 | 配置机器人菜单 |
 | `event:ip_list` | IP 列表 | 获取飞书服务器 IP 列表 |
 
-#### 4. 可选权限（租户级别）
+### 4. 可选权限（租户级别）
 
 | 权限 | 范围 | 说明 |
 |------|------|------|
@@ -565,7 +597,7 @@ docker compose up -d
 | `application:application.app_message_stats.overview:readonly` | 消息统计 | 查看应用消息统计概览 |
 | `corehr:file:download` | 人事文件 | 下载人事系统文件 |
 
-#### 5. 用户级别权限（可选）
+### 5. 用户级别权限（可选）
 
 | 权限 | 范围 | 说明 |
 |------|------|------|
@@ -677,7 +709,7 @@ docker compose up -d
 }
 ```
 
-#### 6. 事件订阅 ⚠️
+### 6. 事件订阅 ⚠️
 
 **这是最容易遗漏的配置！** 如果机器人能发消息但收不到消息，请检查此项。
 
@@ -695,9 +727,9 @@ docker compose up -d
 
 3. 确保事件订阅的权限已申请并通过审核
 
-#### 7. 环境变量配置
+### 7. 环境变量配置
 
-##### 单账号快捷配置
+### 单账号快捷配置
 
 在 [`.env`](.env.example) 文件中添加：
 
@@ -717,7 +749,7 @@ FEISHU_OFFICIAL_PLUGIN_ENABLED=true
 
 > 💡 **提示**：单账号环境变量会自动写入 [`channels.feishu.accounts.default`](openclaw.json.example:152) 或 [`FEISHU_DEFAULT_ACCOUNT`](.env.example) 指定的账号节点，同时保留 [`channels.feishu.appId`](openclaw.json.example:140) / [`channels.feishu.appSecret`](openclaw.json.example:141) 作为默认机器人兜底配置。
 
-##### 多账号配置（推荐）
+### 多账号配置（推荐）
 
 如需配置多个飞书机器人，可使用 [`FEISHU_ACCOUNTS_JSON`](.env.example) 环境变量，结构与企业微信多账号类似。
 
@@ -733,7 +765,7 @@ FEISHU_GROUPS_JSON={"*":{"requireMention":true},"oc_83e1c0d069b94efc09ad22e05bc0
 - 若同时配置单账号环境变量与多账号 JSON，则单账号配置先写入默认账号，再由多账号 JSON 覆盖同名字段。
 - 启动时会校验重复的 `appId`，避免多机器人路由冲突。
 
-##### `openclaw.json` 多账号示例
+### `openclaw.json` 多账号示例
 
 ```jsonc
 "channels": {
@@ -791,7 +823,7 @@ FEISHU_GROUPS_JSON={"*":{"requireMention":true},"oc_83e1c0d069b94efc09ad22e05bc0
 > 
 > 💡 **快速创建飞书机器人**：[openclaw 飞书创建页](https://open.feishu.cn/page/openclaw?form=multiAgent) - 官方快捷创建入口
 
-#### 飞书官方团队插件配置
+### 飞书官方团队插件配置
 
 本项目已集成飞书官方团队插件 CLI 工具，但**不会在镜像构建阶段自动执行** [`npx @larksuite/openclaw-lark-tools install`](README.md:719)，因为该命令会进入交互式向导（如“Create a new bot / Use an existing bot linked to OpenClaw”），在 [`docker build`](README.md:1038) 中无法回答提示，最终会以退出码 `130` 失败。
 
@@ -841,9 +873,9 @@ FEISHU_GROUPS_JSON={"*":{"requireMention":true},"oc_83e1c0d069b94efc09ad22e05bc0
    `docker compose --profile tools stop openclaw-installer`
    或 `docker compose --profile tools rm -sf openclaw-installer`
 
-### 钉钉配置
+## 钉钉配置
 
-#### 1. 创建钉钉应用
+### 1. 创建钉钉应用
 
 1. 访问 [钉钉开发者后台](https://open-dev.dingtalk.com/)
 2. 创建企业内部应用
@@ -851,7 +883,7 @@ FEISHU_GROUPS_JSON={"*":{"requireMention":true},"oc_83e1c0d069b94efc09ad22e05bc0
 4. 配置消息接收模式为 **Stream 模式**
 5. 发布应用
 
-#### 2. 获取凭证
+### 2. 获取凭证
 
 从开发者后台获取：
 
@@ -861,7 +893,7 @@ FEISHU_GROUPS_JSON={"*":{"requireMention":true},"oc_83e1c0d069b94efc09ad22e05bc0
 - **Corp ID**（与 Client ID 相同）
 - **Agent ID**（应用 ID）
 
-#### 3. 环境变量配置
+### 3. 环境变量配置
 
 在 `.env` 文件中添加：
 
@@ -882,9 +914,9 @@ DINGTALK_AGENT_ID=your-dingtalk-agent-id
 
 > 💡 **参考项目**：[openclaw-channel-dingtalk](https://github.com/soimy/openclaw-channel-dingtalk) - 钉钉渠道完整实现示例
 
-### QQ 机器人配置
+## QQ 机器人配置
 
-#### 获取 QQ 机器人凭证
+### 获取 QQ 机器人凭证
 
 1. 访问 [QQ 开放平台](https://q.qq.com/)
 2. 创建机器人应用
@@ -893,7 +925,7 @@ DINGTALK_AGENT_ID=your-dingtalk-agent-id
 
 ![image-20260315025002882](README.assets/image-20260315025002882.png)
 
-#### 2. 环境变量配置（单 Bot）
+### 2. 环境变量配置（单 Bot）
 
 在 `.env` 文件中添加：
 
@@ -906,7 +938,7 @@ QQBOT_CLIENT_SECRET=你的AppSecret
 
 ![](README.assets/image-20260315025446494.png) 
 
-#### 多 Bot 配置（Multi-Bot）
+### 多 Bot 配置（Multi-Bot）
 
 如需配置多个 QQ 机器人，可以使用 `QQBOT_BOTS_JSON` 环境变量。
 
@@ -923,15 +955,15 @@ QQBOT_BOTS_JSON={"default":{"enabled":true,"appId":"111111111","clientSecret":"s
 
 > 💡 **参考项目**：[qqbot](https://github.com/sliverp/qqbot) - QQ 机器人完整实现示例
 
-### 企业微信配置
+## 企业微信配置
 
-#### 1. 获取企业微信凭证
+### 1. 获取企业微信凭证
 
 1. 访问 [企业微信管理后台](https://work.weixin.qq.com/)
 2. 进入"应用管理"，用 API 模式创建一个或多个"智能机器人"应用
 3. 设置为长连接模式，并保存
 
-#### 2. 环境变量配置（单账号）
+### 2. 环境变量配置（单账号）
 
 在 `.env` 文件中添加：
 
@@ -946,7 +978,7 @@ WECOM_AGENT_ID=1000001
 
 > 💡 **提示**：若使用旧版环境变量 `WECOM_TOKEN` 和 `WECOM_ENCODING_AES_KEY`，项目将不可用。
 
-#### 3. 多账号配置（Multi-Bot）
+### 3. 多账号配置（Multi-Bot）
 
 推荐使用 `WECOM_ACCOUNTS_JSON` 环境变量。
 
@@ -961,7 +993,7 @@ WECOM_ACCOUNTS_JSON={"open":{"botId":"aib-open-xxx","secret":"secret-open-xxx","
 - `WECOM_ACCOUNTS_JSON` 会与现有配置深度合并。
 - 启动时会自动检测重复 Token / Agent ID，避免冲突。
 
-#### 4. 其它核心配置
+### 4. 其它核心配置
 
 | 环境变量 | 说明 | 默认值 |
 |---------|------|--------|
@@ -974,7 +1006,7 @@ WECOM_ACCOUNTS_JSON={"open":{"botId":"aib-open-xxx","secret":"secret-open-xxx","
 
 > 💡 **参考项目**：[openclaw-plugin-wecom](https://github.com/sunnoy/openclaw-plugin-wecom) - 企业微信插件完整实现示例
 
-## Dockerfile说明
+# Dockerfile说明
 
 镜像中已全局安装以下 npm 包：
 
@@ -1174,7 +1206,7 @@ ENTRYPOINT ["/bin/bash", "/usr/local/bin/init.sh"]
 
 ```
 
-## docker-compose.yml
+# docker-compose.yml
 
 容器使用以下卷进行数据持久化：
 
@@ -1403,22 +1435,22 @@ volumes:
 
 ```
 
-## 管理容器
+# 管理容器
 
-### 重启容器
+## 重启容器
 
 ```
 docker-compose restart openclaw-gateway
 ```
 
-### 重新构建
+## 重新构建
 
 ```
 docker compose up -d --force-recreate
 cat ~/.openclaw/openclaw.json  
 ```
 
-### 进入容器
+## 进入容器
 
 ```
 docker exec -it openclaw-gateway /bin/bash
@@ -1426,10 +1458,14 @@ docker exec -it openclaw-gateway /bin/bash
 
 <img src="README.assets/image-20260314190300307.png" alt="image-20260314190300307" style="zoom:200%;" />
 
-### 查看运行日志
+## 查看运行日志
 
 ```
 docker logs -f openclaw-gateway                       
 ```
 
 ![image-20260315011655194](README.assets/image-20260315011655194.png)
+
+web查看
+
+![image-20260315180856051](README.assets/image-20260315180856051.png)
