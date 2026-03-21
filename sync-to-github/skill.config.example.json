@@ -1,0 +1,26 @@
+/**
+ * OpenClaw Skill 配置示例
+ * 
+ * 将此配置添加到 openclaw.json 的 skills 部分
+ */
+
+{
+  "skills": {
+    "sync-to-github": {
+      "enabled": true,
+      "config": {
+        // x 项目本地路径（必填）
+        "xProjectPath": "/home/node/.openclaw/workspace/x-project",
+        
+        // GitHub 仓库信息（必填）
+        "githubRepo": "your-username/your-repo",
+        "githubToken": "your-github-token",
+        "githubBranch": "main",
+        
+        // 默认分类和标签（可选）
+        "categories": ["技术", "博客"],
+        "tags": ["OpenClaw", "自动化"]
+      }
+    }
+  }
+}
