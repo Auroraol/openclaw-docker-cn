@@ -658,8 +658,7 @@ docker compose up -d
 | `aily:file:write` | AI 文件写入 | 以用户身份写入 AI 助手文件 |
 | `im:chat.access_event.bot_p2p_chat:read` | 聊天事件 | 以用户身份读取机器人单聊事件 |
 
-<details>
-<summary><b>官方飞书插件推荐权限 JSON（默认折叠）</b></summary>
+**官方飞书插件推荐权限 JSON**（默认折叠）
 
 ```json
 {
