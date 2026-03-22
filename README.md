@@ -181,7 +181,9 @@ docker build --network=host --no-cache -t openclaw:local-skills .
 docker build --target=<step_name> .
 ```
 
-![image-20260316115104914](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260315030632171.png)
+<img src="https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260316115104914.png" style="zoom:150%;" />
+
+<img src="https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260314175237995.png" alt="image-20260314213032665" style="zoom:150%;" />
 
 ### 3. 配置环境变量
 
@@ -207,11 +209,11 @@ docker compose up -d --force-recreate  只会强制重新创建容器，但不�
 
 ## 飞书机器人
 
-<img src="https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260316115104914.png" style="zoom:150%;" />
+![image-20260316115104914](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260315030632171.png)
 
 ## qq机器人
 
-![image-20260315025833756](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260315171648660.png)
+<img src="https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260315025833756.png" alt="image-20260314203042659" style="zoom:150%;" />
 
 # 配置
 
@@ -288,7 +290,7 @@ MODEL2_MAX_TOKENS=8192
 
 [模型大全功能规格与计费:](https://help.aliyun.com/zh/model-studio/models#03a05ab98953u)
 
-<img src="https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260315025833756.png" alt="image-20260314203042659" style="zoom:150%;" />
+<img src="https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260314203042659.png" alt="image-20260315172051470" style="zoom: 200%;" />
 
 注意：[`PRIMARY_MODEL`](.env.example) 和 [`IMAGE_MODEL_ID`](.env.example) 都可以填写完整引用，即 `provider/model` 格式，例如：
 
@@ -360,9 +362,9 @@ openclaw devices list
 openclaw devices approve 这里填 request-id
 ```
 
-![image-20260315171648660](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260315172051470.png)
+![](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260315171648660.png)
 
-![image-20260315172051470](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260314203042659.png)
+![image-20260315171648660](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260315172051470.png)
 
 效果
 
@@ -383,7 +385,7 @@ openclaw devices approve 这里填 request-id
 - `closed` — 不响应任何群
 - `allowlist` — 仅白名单群组（需配合 `GROUP_ALLOW_FROM` 列表）
 
-![image-20260315173349975](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260314210122982.png)
+![image-20260320000725618](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260315172151884.png)
 
 ## 工作空间配置
 
@@ -402,8 +404,6 @@ WORKSPACE 是 AI 机器人可以安全访问和修改文件的专用目录，类
 OPENCLAW_DATA_DIR=~/.openclaw
 ```
 
-![image-20260320000725618](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260315172151884.png)
-
 ```bash
 /root/.openclaw/openclaw.json 
 #cat ~/.openclaw/openclaw.json 
@@ -411,11 +411,11 @@ OPENCLAW_DATA_DIR=~/.openclaw
 
 宿主机挂载目录配置
 
-![image-20260322165148765](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260320000725618.png)
+![image-20260314210122982](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260322165148765.png)
 
 #  skills使用
 
-详细说明文档:
+详细说明文档: [skills说明](https://github.com/Auroraol/openclaw-docker-cn/blob/feature-doc_sync/docs/skills说明.md)
 
 ```bash
 docker exec -it openclaw-gateway /bin/bash
@@ -423,26 +423,25 @@ docker exec -it openclaw-gateway /bin/bash
 openclaw skills list
 ```
 
-![image-20260314210122982](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260322165148765.png)
+![image-20260315173349975](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260314210122982.png)
 
 ## 本地skills安装
 
 在宿主机操作
 
 ```bash
- ./install-skill.sh jira-diagnosis ./conversation-diagnosis-jira
+#./install-skill.sh 技能名 技能路径
+./install-skill.sh jira-diagnosis ./conversation-diagnosis-jira
  docker compose restart openclaw-gateway
 ```
 
-![image-20260321011157504](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260314212552050.png)
-
 宿主机(容器挂载目录)
 
-![image-20260321011048330](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260314213032665.png)
+![](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260321011048330.png)
 
 容器中环境变量查看
 
-![image-20260321011454332](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260314212455251.png)
+![image-20260315180724123](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260321011454332.png)
 
 ## clawhub安装技能
 
@@ -471,9 +470,9 @@ node@e217d58ae6b0:~$ npx clawhub login --token clh_1mov9RWOiT5QyRrX4B0QkZ8tjILD5
 ✔ OK. Logged in as @Auroraol.
 ```
 
-![image-20260314212455251](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260315180724123.png)
+![image-20260321011157504](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260314212552050.png)
 
-![image-20260314212552050](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260321011048330.png)
+![image-20260321011454332](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260314212455251.png)
 
 使用clawhub安装
 
@@ -481,11 +480,11 @@ node@e217d58ae6b0:~$ npx clawhub login --token clh_1mov9RWOiT5QyRrX4B0QkZ8tjILD5
 node@e217d58ae6b0:~$ npx clawhub install agent-browser
 ```
 
-<img src="https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260314175237995.png" alt="image-20260314213032665" style="zoom:150%;" />
+<img src="https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260314213032665.png" alt="image-20260321011048330" style="zoom:150%;" />
 
 web查看
 
-![image-20260315180724123](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260321011454332.png)
+![](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260315180724123.png)
 
 # 常见问题
 
@@ -1517,13 +1516,13 @@ docker rm openclaw-gateway
 docker exec -it openclaw-gateway /bin/bash
 ```
 
-<img src="https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260315011655194.png" alt="image-20260314190300307" style="zoom:200%;" />
-
 ## 查看运行日志
 
 ```bash
 docker logs -f openclaw-gateway             
 ```
+
+<img src="https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260315011655194.png" alt="image-20260314190300307" style="zoom:200%;" />
 
 web查看
 
