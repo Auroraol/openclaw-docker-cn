@@ -620,8 +620,6 @@ docker compose up -d
 4. 开启所需权限（见下方）⚠️ **重要**
 5. 配置事件订阅（见下方）⚠️ **重要**
 
-![image-20260315023152066](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260321011157504.png)
-
 ### 2. 必需权限（租户级别）
 
 | 权限 | 范围 | 说明 |
@@ -1526,8 +1524,6 @@ docker exec -it openclaw-gateway /bin/bash
 ```bash
 docker logs -f openclaw-gateway             
 ```
-
-![image-20260315011655194](https://github.com/Auroraol/Drawing-bed/raw/main/img/image-20260314190300307.png)
 
 web查看
 
