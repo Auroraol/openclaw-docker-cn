@@ -385,7 +385,7 @@ openclaw devices approve 这里填 request-id
 
 ## 工作空间配置
 
-WORKSPACE 是 AI 机器人可以安全访问和修改文件的专用目录，类似于一个"沙箱环境"。
+WORKSPACE 是 AI 机器人可以安全访问和修改文件的专用目录，类似于一个"沙箱环境"。 AI的工作台。
 
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
@@ -393,7 +393,27 @@ WORKSPACE 是 AI 机器人可以安全访问和修改文件的专用目录，类
 
 ---
 
+## 配置文件
+
+```bash
+# 宿主机挂载目录配置
+OPENCLAW_DATA_DIR=~/.openclaw
+```
+
+![image-20260320000725618](C:/Users/16658/AppData/Roaming/Typora/typora-user-images/image-20260320000725618.png)
+
+```bash
+/root/.openclaw/openclaw.json 
+#cat ~/.openclaw/openclaw.json 
+```
+
+宿主机挂载目录配置
+
+![image-20260322165148765](C:/Users/16658/AppData/Roaming/Typora/typora-user-images/image-20260322165148765.png)
+
 #  skills使用
+
+详细说明文档:
 
 ```bash
 docker exec -it openclaw-gateway /bin/bash
@@ -403,7 +423,24 @@ openclaw skills list
 
 ![image-20260314210122982](README.assets/image-20260314210122982.png)
 
-## 安装技能
+## 本地skills安装
+
+```bash
+ ./install-skill.sh jira-diagnosis ./conversation-diagnosis-jira
+ docker compose restart openclaw-gateway
+```
+
+![image-20260321011157504](C:/Users/16658/AppData/Roaming/Typora/typora-user-images/image-20260321011157504.png)
+
+宿主机(容器挂载目录)
+
+![image-20260321011048330](C:/Users/16658/AppData/Roaming/Typora/typora-user-images/image-20260321011048330.png)
+
+容器中环境变量查看
+
+![image-20260321011454332](C:/Users/16658/AppData/Roaming/Typora/typora-user-images/image-20260321011454332.png)
+
+## clawhub安装技能
 
 ```bash
 # 登录
@@ -1484,219 +1521,3 @@ docker logs -f openclaw-gateway
 web查看
 
 ![image-20260315180856051](README.assets/image-20260315180856051.png)
-
-
-
-
-
-
-
-openclaw plugins update qqbot
-
-```
-# 查看插件列表
-docker exec -it openclaw-gateway bash -c "su node -c 'openclaw plugins list'"
-
-# 查看通道状态
-docker exec -it openclaw-gateway bash -c "su node -c 'openclaw channels status'"
-
-# 查看日志
-docker logs -f openclaw-gateway | grep qqbot
-```
-
-
-
-宿主机:
-
-![image-20260319235342312](C:/Users/16658/AppData/Roaming/Typora/typora-user-images/image-20260319235342312.png)
-
-
-
-
-
-方案三：使用 docker-compose 挂载插件目录（最灵活）
-修改 docker-compose.yml，将插件目录挂载到宿主机：
-
-```
-volumes:
-  - ./extensions:/home/node/.openclaw/extensions
-```
-
-然后在宿主机上安装：
-
-```
-# 在宿主机的 ./extensions 目录下
-git clone https://github.com/sliverp/qqbot.git
-cd qqbot
-npm install --production
-openclaw plugins install .
-
-# 查看 package.json，把 silk-wasm 从 dependencies 里删掉
-cat package.json | grep silk
-
-# 编辑 package.json 移除 silk-wasm，然后
-npm install --omit=dev
-
-# 重启容器
-docker restart openclaw-gateway
-
-```
-
-方案一：在容器内手动安装（推荐，快速）
-
-
-
-```
-# 1. 进入容器
-docker exec -it openclaw-gateway bash
-
-# 2. 切换到 node 用户
-su node
-
-# 3. 安装 qqbot（选择一种方式）
-
-# 方式 A：从 npm 安装腾讯官方版（推荐）
-cd /home/node/.openclaw
-openclaw plugins install @tencent-connect/openclaw-qqbot@latest
-cd /home/node/.openclaw/extensions/@tencent-connect/openclaw-qqbot
-npm install --production
-
-# 方式 B：从源码安装（你当前 Dockerfile 的方式）
-cd /home/node/.openclaw
-git clone https://github.com/sliverp/qqbot.git
-cd qqbot
-bash ./scripts/upgrade.sh
-openclaw plugins install .
-npm install --production
-
-# 4. 配置 QQ 机器人通道
-openclaw channels add --channel qqbot --token "AppID:AppSecret"
-
-# 5. 退出容器
-exit
-
-# 6. 重启容器
-docker restart openclaw-gateway
-
-```
-
-挂载
-
-```
-/home/node  写死的
-```
-
-```
-volumes:
-  - ${OPENCLAW_DATA_DIR}:/home/node/.openclaw
-  - ${OPENCLAW_DATA_DIR}/extensions:/home/node/.openclaw/extensions
-```
-
-
-
-例子
-
-```
-# 宿主机挂载目录配置
-OPENCLAW_DATA_DIR=~/.openclaw
-```
-
-![image-20260320000725618](C:/Users/16658/AppData/Roaming/Typora/typora-user-images/image-20260320000725618.png)
-
-
-
-
-
-```
-# 创建一个假的 silk-wasm 模块让插件先启动
-mkdir -p /home/node/.openclaw/extensions/.openclaw-install-stage-gVIxKp/node_modules/silk-wasm
-echo '{"name":"silk-wasm","version":"1.0.0","main":"index.js"}' > package.json
-echo "module.exports = { encode: () => { throw new Error('silk not installed'); }, decode: () => { throw new Error('silk not installed'); } };" > index.js
-```
-
-
-
-
-
-```
-root@f86c572d648c:~# cd ~/.openclaw/skills/conversation-diagnosis-jira
-   npm install
-
-
-⠇^C
-root@f86c572d648c:~/.openclaw/skills/conversation-diagnosis-jira# ls
-node_modules  package.json  package-lock.json  README.md  scripts  SKILL.md
-root@f86c572d648c:~/.openclaw/skills/conversation-diagnosis-jira# npm install
-
-up to date, audited 25 packages in 1s
-
-6 packages are looking for funding
-  run `npm fund` for details
-
-found 0 vulnerabilities
-root@f86c572d648c:~/.openclaw/skills/conversation-diagnosis-jira# openclaw skills list
-```
-
-
-
-
-
-
-
-```
-# 安装插件（Plugins）
-RUN openclaw plugins install @sliverp/qqbot@latest && \
-    openclaw plugins install @sunnoy/wecom || true
-
-# 插件安装后，会自动注册其中包含的 Skills
-```
-
-```
-# 查看所有已安装的插件
-docker exec -it openclaw-gateway bash -c "su node -c 'openclaw plugins list'"
-
-# 查看某个插件提供的技能
-docker exec -it openclaw-gateway bash -c "su node -c 'openclaw plugins info qqbot'"
-
-# 查看所有可用的技能（工具）
-docker exec -it openclaw-gateway bash -c "su node -c 'openclaw tools list'"
-
-```
-
-Plugin（插件）
-  ├── Channel（渠道）- 如 QQ、钉钉、飞书
-  ├── Tools（工具集）- 一组相关的函数
-  │     └── Skill（技能）- 单个具体能力
-  └── Extensions（扩展功能
-
-
-
-
-
-```
-Skills vs Plugins 的区别
-📦 Plugins（插件）
-定义：扩展 OpenClaw 核心功能的模块
-作用：添加新的通信渠道（channels）、工具（tools）、或系统级功能
-示例：
-@sliverp/qqbot - QQ 机器人渠道插件
-openclaw-channel-dingtalk - 钉钉渠道插件
-@sunnoy/wecom - 企业微信插件
-openclaw-lark-tools - 飞书工具集
-🛠️ Skills（技能）
-定义：AI 可以调用的特定能力或工具函数
-作用：让 AI 能够执行具体任务（如查询 Jira、搜索数据库、调用 API 等）
-示例：
-jira-diagnosis - Jira 工单查询和分析技能
-web-search - 网页搜索技能
-code-executor - 代码执行技能
-image-analyzer - 图像分析技能
-```
-
-
-
-./install-skill.sh jira-diagnosis ./conversation-diagnosis-jira
-
-
-
-docker-compose restart openclaw-gateway
