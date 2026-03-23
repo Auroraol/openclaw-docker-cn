@@ -1,2 +1,5 @@
 .env
 conversation-diagnosis-jira/
+my-skills/jira-diagnosis/
+my-skills/sync-to-github/node_modules/
+my-skills/sync-to-github/.idea/
