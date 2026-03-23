@@ -7,6 +7,8 @@
 3. **不破坏远程历史** - 不会像 `git push -f` 那样覆盖他人提交
 4. **支持 Fine-grained Token** - 只需要 `contents:write` 权限即可
 5. **可配置目标路径** - 支持推送到 `_posts` 等子目录
+6. **准确的标题提取** - 只提取第一行作为标题，不会混入正文内容
+7. **标准的 frontmatter 格式** - 使用单行数组格式 `categories: [A, B]`
 
 ## 快速开始
 
@@ -111,8 +113,8 @@ await sync.execute({
 ---
 title: 我的技术文章
 date: 2025-11-04 11:00:00 +0800
-categories: [技术，博客]
-tags: [OpenClaw, 自动化，同步]
+categories: [技术, 博客]
+tags: [OpenClaw, 自动化, 同步]
 ---
 # 我的技术文章
 

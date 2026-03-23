@@ -48,11 +48,22 @@ class SyncToGitHub {
    * 从 markdown 内容中提取标题
    */
   extractTitle(content) {
-    const titleMatch = content.match(/^#\s+(.+)$/m);
+    // 只提取第一行作为标题（去除换行符和后续内容）
+    const firstLine = content.split('\n')[0].trim();
+    
+    // 如果第一行是 markdown 标题格式 (# 标题)
+    const titleMatch = firstLine.match(/^#\s*(.+)$/);
     if (titleMatch) {
       return titleMatch[1].trim();
     }
-    const firstLines = content.split('\n').slice(0, 3).join(' ').trim();
+    
+    // 如果没有 # 标记，但第一行不为空，直接返回第一行
+    if (firstLine) {
+      return firstLine.substring(0, 100);
+    }
+    
+    // 兜底：取前3行非空内容的前50个字符
+    const firstLines = content.split('\n').filter(line => line.trim()).slice(0, 3).join(' ').trim();
     return firstLines.substring(0, 50) || '无标题';
   }
 
@@ -84,14 +95,19 @@ class SyncToGitHub {
 
     const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:00 +0800`;
 
-    const frontmatter = {
-      title: title,
-      date: formattedDate,
-      categories: categories,
-      tags: tags
-    };
+    // 构建单行数组格式的 frontmatter
+    const categoriesStr = categories.join(', ');
+    const tagsStr = tags.join(', ');
+    
+    const frontmatter = `---
+title: ${title}
+date: ${formattedDate}
+categories: [${categoriesStr}]
+tags: [${tagsStr}]
+---
+`;
 
-    const fileContent = matter.stringify(content, frontmatter);
+    const fileContent = frontmatter + content;
     
     return {
       content: fileContent,
