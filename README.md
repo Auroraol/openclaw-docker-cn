@@ -432,7 +432,8 @@ openclaw skills list
 ```bash
 #./install-skill.sh 技能名 技能路径
 ./install-skill.sh jira-diagnosis ./conversation-diagnosis-jira
- docker compose restart openclaw-gateway
+
+docker compose up -d --force-recreate
 ```
 
 宿主机(容器挂载目录)
