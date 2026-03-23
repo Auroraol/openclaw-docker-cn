@@ -1,0 +1,22 @@
+{
+  "name": "sync-to-github",
+  "version": "2.0.0",
+  "description": "将 markdown 文件同步到 GitHub（使用 GitHub API，避免 git 权限问题）",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "markdown",
+    "sync",
+    "github",
+    "openclaw-skill",
+    "github-api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "gray-matter": "^4.0.3"
+  }
+}
